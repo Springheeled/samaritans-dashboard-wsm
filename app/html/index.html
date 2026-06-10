@@ -232,25 +232,12 @@
                 },
 async fetchShifts() {
   try {
-    const today = moment().format('YYYY-MM-DD');
-    const dayAfterTomorrow = moment().add(2, 'days').format('YYYY-MM-DD');
-
-    const response = await fetch(`/shift.json?start_date=${today}&end_date=${dayAfterTomorrow}`);
-
+    const response = await fetch('/stats/export_rotas.json');
     if (!response.ok)
       throw new Error(response.statusText);
-
     const json = await response.json();
-    const allShifts = json['shifts'] || json;
-
-    this.shifts = allShifts.filter(shift =>
-      moment(shift.start_datetime).utc().isSame(moment(), 'day')
-    );
-
-    this.tomorrowShifts = allShifts.filter(shift =>
-      moment(shift.start_datetime).utc().isSame(moment().add(1, 'day'), 'day')
-    );
-
+    this.shifts = json['shifts']
+    this.tomorrowShifts = []
     this.shiftsError = null;
     this.shiftsLoading = false;
   } catch (err) {
