@@ -59,6 +59,7 @@
         </style>
     </head>
     <body>
+        
         <nav class="uk-navbar-container uk-navbar-transparent" style="height: 100px" uk-navbar>
             <div class="uk-navbar-left">
                 <img src="img/logo.png" class="uk-navbar-item uk-logo">
@@ -126,6 +127,26 @@
                                 </template>
                                 <p v-if="!shifts.length">There are no shifts scheduled for today.</p>
                             </div>
+                            <div class="uk-card uk-card-body uk-light" style="background: #72619f; margin-top: 20px">
+    <span class="connectors"></span>
+    <p class="uk-text-meta uk-margin-remove">{{ formatDate(tomorrowDate()) }}</p>
+    <h1 class="uk-card-title uk-margin-remove-top">Tomorrow's Shifts</h1>
+
+    <template v-for="(shift, index) in tomorrowShifts" :key="shift.id">
+        <h2 class="uk-h3 uk-margin-remove" v-if="index == 0 || shift.start_datetime != tomorrowShifts[index -1].start_datetime || shift.duration != tomorrowShifts[index -1].duration">
+            {{ formatTime(shift.start_datetime) }} to {{ formatTime(endTime(shift.start_datetime, shift.duration)) }}
+        </h2>
+        <div>
+            <em>({{ shift.rota }})</em>
+            <template v-for="(volunteer, index) in shift.volunteers" :key="volunteer.id">
+                <template v-if="index > 0">,</template>
+                {{ volunteer.name }}
+            </template>
+        </div>
+    </template>
+
+    <p v-if="!tomorrowShifts.length">There are no shifts scheduled for tomorrow.</p>
+</div>
                         </div>
                     </div>
                 </div>
@@ -166,7 +187,8 @@
                   messages: {},
                   shiftsLoading: true,
                   shiftsError: null,
-                  shifts: {}
+                  shifts: [],
+                tomorrowShifts: []
                 }
               },
               created() {
@@ -208,29 +230,46 @@
                     this.messagesError = "Unable to access messages data feed.";
                   }
                 },
-                async fetchShifts() {
-                  try {
-                    const response = await fetch('/stats/export_rotas.json');
-                    if (!response.ok)
-                      throw new Error(response.statusText);
-                    const json = await response.json();
-                    this.shifts = json['shifts']
-                    this.shiftsError = null;
-                    this.shiftsLoading = false;
-                  } catch (err) {
-                    console.log(err);
-                    this.shiftsError = "Unable to access shifts data feed.";
-                  }
-                },
-                formatDate(datetime = new Date()) {
-                  return moment(datetime).format('dddd[, ]MMMM Do YYYY')
-                },
-                formatTime(datetime) {
-                  return moment(datetime).utc().format('HH:mm')
-                },
-                endTime(start_datetime, duration) {
-                  return moment(start_datetime).add(duration, 's')
-                }
+async fetchShifts() {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    const dayAfterTomorrow = moment().add(2, 'days').format('YYYY-MM-DD');
+
+    const response = await fetch(`/shift.json?start_date=${today}&end_date=${dayAfterTomorrow}`);
+
+    if (!response.ok)
+      throw new Error(response.statusText);
+
+    const json = await response.json();
+    const allShifts = json['shifts'] || json;
+
+    this.shifts = allShifts.filter(shift =>
+      moment(shift.start_datetime).utc().isSame(moment(), 'day')
+    );
+
+    this.tomorrowShifts = allShifts.filter(shift =>
+      moment(shift.start_datetime).utc().isSame(moment().add(1, 'day'), 'day')
+    );
+
+    this.shiftsError = null;
+    this.shiftsLoading = false;
+  } catch (err) {
+    console.log(err);
+    this.shiftsError = "Unable to access shifts data feed.";
+  }
+},
+formatDate(datetime = new Date()) {
+  return moment(datetime).format('dddd[, ]MMMM Do YYYY')
+},
+tomorrowDate() {
+  return moment().add(1, 'day')
+},
+formatTime(datetime) {
+  return moment(datetime).utc().format('HH:mm')
+},
+endTime(start_datetime, duration) {
+  return moment(start_datetime).add(duration, 's')
+}
               }
             })
 
