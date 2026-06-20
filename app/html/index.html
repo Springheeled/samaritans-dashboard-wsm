@@ -188,7 +188,7 @@
                   shiftsLoading: true,
                   shiftsError: null,
                   shifts: [],
-                tomorrowShifts: []
+                  tomorrowShifts: []
                 }
               },
               created() {
@@ -232,12 +232,36 @@
                 },
 async fetchShifts() {
   try {
-    const response = await fetch('/stats/export_rotas.json');
+    const today = moment().format('YYYY-MM-DD');
+    const dayAfterTomorrow = moment().add(2, 'days').format('YYYY-MM-DD');
+
+    const response = await fetch(`/shift.json?start_date=${today}&end_date=${dayAfterTomorrow}`);
+
     if (!response.ok)
       throw new Error(response.statusText);
+
     const json = await response.json();
-    this.shifts = json['shifts']
-    this.tomorrowShifts = []
+    const allShifts = json['shifts'] || [];
+
+    const normaliseShift = shift => ({
+      id: shift.id,
+      rota: shift.rota && shift.rota.name ? shift.rota.name : shift.rota,
+      title: shift.title,
+      start_datetime: shift.start_datetime,
+      duration: shift.duration,
+      volunteers: shift.volunteer_shifts
+        ? shift.volunteer_shifts.map(vs => vs.volunteer)
+        : (shift.volunteers || [])
+    });
+
+    this.shifts = allShifts
+      .filter(shift => moment(shift.start_datetime).isSame(moment(), 'day'))
+      .map(normaliseShift);
+
+    this.tomorrowShifts = allShifts
+      .filter(shift => moment(shift.start_datetime).isSame(moment().add(1, 'day'), 'day'))
+      .map(normaliseShift);
+
     this.shiftsError = null;
     this.shiftsLoading = false;
   } catch (err) {
