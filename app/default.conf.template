@@ -16,6 +16,10 @@ server {
 		proxy_set_header Authorization "APIKEY ${THREERINGS_APIKEY}";
 		proxy_pass https://www.3r.org.uk/stats/export_rotas.json;
 	}
+	location = /shift.json {
+		proxy_set_header Authorization "APIKEY ${THREERINGS_APIKEY}";
+		proxy_pass https://www.3r.org.uk/shift.json;
+	}
 	location = /wiki/branchcommsscreens/all_pages.json {
 		proxy_set_header Authorization "APIKEY ${THREERINGS_APIKEY}";
 		proxy_pass https://www.3r.org.uk/wiki/branchcommsscreens/all_pages.json;
